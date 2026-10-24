@@ -1,0 +1,117 @@
+{
+  "use_cases": {
+    "own-software": "分析自己擁有或自己開發的軟體（遺失原始碼、除錯、稽核）",
+    "interoperability": "在法律允許的範圍內，讓自己的系統與合法取得的軟體或格式互通",
+    "data-recovery": "救援自己擁有的資料，把私有或過時格式轉成開放格式",
+    "defense": "資安防禦：分析可疑樣本、驗證自家產品的防護、經授權的測試",
+    "competitive-research": "競品黑箱架構調研：提取介面規格、離線快取機制與系統架構設計",
+    "legacy-modernization": "無原始碼老舊系統維護：分析遺失原始碼之組件以進行現代化重構與遷移"
+  },
+  "tools": [
+    {
+      "id": "rea",
+      "name": "REA (rea-agents)",
+      "repo": "https://github.com/morluto/rea",
+      "category": "MCP 總入口",
+      "use_cases": ["own-software", "interoperability", "data-recovery", "defense", "competitive-research", "legacy-modernization"],
+      "detect": {"commands": ["rea-agents", "rea"], "version_args": ["--version"]},
+      "requires": [{"command": "node", "version_args": ["--version"], "min_version": "22.19", "label": "Node.js 22.19+"}],
+      "install": {"any": "npx rea-agents setup"},
+      "note": "本身不含反編譯器，是把本機已裝的分析工具包成單一 MCP 服務。"
+    },
+    {
+      "id": "ghidra",
+      "name": "Ghidra",
+      "repo": "https://github.com/NationalSecurityAgency/ghidra",
+      "category": "原生二進位反編譯",
+      "use_cases": ["own-software", "interoperability", "data-recovery", "defense", "legacy-modernization"],
+      "detect": {
+        "env": "GHIDRA_INSTALL_DIR",
+        "env_files": ["support/analyzeHeadless.bat", "support/analyzeHeadless"],
+        "commands": ["analyzeHeadless"]
+      },
+      "requires": [{"command": "java", "version_args": ["-version"], "min_version": "21", "label": "JDK 21+"}],
+      "install": {"any": "從 GitHub Releases 下載解壓，設定環境變數 GHIDRA_INSTALL_DIR 指向解壓目錄"},
+      "note": "JDK 版本需求以該版 Ghidra 的官方安裝說明為準。"
+    },
+    {
+      "id": "ghidramcp",
+      "name": "GhidraMCP",
+      "repo": "https://github.com/LaurieWired/GhidraMCP",
+      "category": "Ghidra 的 MCP 橋接",
+      "use_cases": ["own-software", "interoperability", "defense", "legacy-modernization"],
+      "detect": {"manual": "Ghidra 外掛，需在 Ghidra 的 File → Install Extensions 確認"},
+      "install": {"any": "依該 repo README 安裝 Ghidra 擴充與 MCP bridge"}
+    },
+    {
+      "id": "imhex",
+      "name": "ImHex",
+      "repo": "https://github.com/WerWolv/ImHex",
+      "category": "十六進位編輯與格式解析",
+      "use_cases": ["own-software", "data-recovery", "defense", "competitive-research"],
+      "detect": {"commands": ["imhex"], "version_args": ["--version"]},
+      "install": {"windows": "winget install WerWolv.ImHex", "any": "從 GitHub Releases 下載"}
+    },
+    {
+      "id": "mitmproxy",
+      "name": "mitmproxy",
+      "repo": "https://github.com/mitmproxy/mitmproxy",
+      "category": "HTTP(S) 流量檢視",
+      "use_cases": ["own-software", "interoperability", "defense", "competitive-research"],
+      "detect": {"commands": ["mitmdump", "mitmproxy"], "version_args": ["--version"]},
+      "install": {"any": "pipx install mitmproxy"},
+      "note": "只攔截自己的裝置與自己有權檢視的流量。"
+    },
+    {
+      "id": "ilspy",
+      "name": "ILSpy (ilspycmd)",
+      "repo": "https://github.com/icsharpcode/ILSpy",
+      "category": ".NET 反編譯",
+      "use_cases": ["own-software", "interoperability", "data-recovery", "defense", "competitive-research", "legacy-modernization"],
+      "detect": {"commands": ["ilspycmd"], "version_args": ["--version"]},
+      "requires": [{"command": "dotnet", "version_args": ["--version"], "label": ".NET SDK"}],
+      "install": {"any": "dotnet tool install --global ilspycmd"}
+    },
+    {
+      "id": "frida",
+      "name": "Frida",
+      "repo": "https://github.com/frida/frida",
+      "category": "動態插樁",
+      "use_cases": ["own-software", "defense", "competitive-research"],
+      "detect": {"commands": ["frida"], "version_args": ["--version"]},
+      "install": {"any": "pipx install frida-tools"}
+    },
+    {
+      "id": "android-re-skill",
+      "name": "Android RE Skill",
+      "repo": "https://github.com/SimoneAvogadro/android-reverse-engineering-skill",
+      "category": "Android APK 分析流程（Agent Skill）",
+      "use_cases": ["own-software", "defense", "competitive-research"],
+      "detect": {"manual": "Agent Skill，依你用的 agent 確認是否已安裝"},
+      "requires": [
+        {"command": "jadx", "version_args": ["--version"], "label": "jadx"},
+        {"command": "apktool", "version_args": ["--version"], "label": "apktool"}
+      ],
+      "install": {"any": "依該 repo README 安裝 skill；jadx 與 apktool 從各自的 GitHub Releases 安裝"}
+    },
+    {
+      "id": "universal-modder",
+      "name": "Universal Modder",
+      "repo": "https://github.com/rehan-remade/universal-modder",
+      "category": "遊戲模組流程（Agent Skill）",
+      "use_cases": ["own-software", "interoperability"],
+      "detect": {"manual": "Agent Skill，依你用的 agent 確認是否已安裝"},
+      "install": {"any": "依該 repo README 安裝"},
+      "note": "只用於條款允許模組的遊戲，不用於線上對戰或繞過防作弊。"
+    },
+    {
+      "id": "cpp2il",
+      "name": "Cpp2IL",
+      "repo": "https://github.com/SamboyCoding/Cpp2IL",
+      "category": "Unity IL2CPP 還原",
+      "use_cases": ["own-software", "interoperability", "data-recovery", "legacy-modernization"],
+      "detect": {"commands": ["Cpp2IL", "cpp2il"], "version_args": ["--help"]},
+      "install": {"any": "從 GitHub Releases 下載單一執行檔並加入 PATH"}
+    }
+  ]
+}

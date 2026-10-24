@@ -1,0 +1,42 @@
+{
+  "title": "舊版記帳軟體 .dat 檔格式救援",
+  "scope": {
+    "target": "自己 2012 年購買、已停止維護的記帳軟體所產生的 ledger.dat（虛構範例）",
+    "basis": "data-recovery",
+    "authorization": "檔案內容是我自己的帳務資料；軟體已停產、無匯出功能，只分析資料檔格式以轉成 CSV，不重製或散布軟體本身。",
+    "date": "2026-10-16"
+  },
+  "findings": [
+    {
+      "id": "F1",
+      "level": "seen",
+      "claim": "檔頭前 4 個位元組是固定的魔術字串 LGR1",
+      "evidence": [
+        {"kind": "file-offset", "ref": "ledger.dat@0x0000-0x0003", "note": "4C 47 52 31"},
+        {"kind": "command", "ref": "python -c \"print(open('ledger.dat','rb').read(4))\"", "note": "輸出 b'LGR1'"}
+      ]
+    },
+    {
+      "id": "F2",
+      "level": "seen",
+      "claim": "從 0x0010 起每 32 位元組重複一次結構，第 0–3 位元組是遞增整數",
+      "evidence": [
+        {"kind": "file-offset", "ref": "ledger.dat@0x0010-0x004F", "note": "ImHex pattern 套用後前兩筆的序號為 1、2"}
+      ]
+    },
+    {
+      "id": "F3",
+      "level": "inferred",
+      "claim": "每筆紀錄 32 位元組，第 4–7 位元組是以「分」為單位的金額（little-endian int32）",
+      "based_on": ["F2"],
+      "reasoning": "把第 4–7 位元組解成 int32 後，前 20 筆除以 100 與我手上的紙本帳一致。",
+      "confidence": "中：只比對了 20 筆"
+    },
+    {
+      "id": "F4",
+      "level": "unknown",
+      "claim": "第 28–31 位元組的用途",
+      "next_step": "在軟體裡建立一筆只改分類的紀錄，比對前後 .dat 檔差異"
+    }
+  ]
+}
