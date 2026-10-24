@@ -4,6 +4,17 @@ English | [中文版](CHANGELOG.md)
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), newest first.
 
+## 2026-10-24
+
+### Fixed
+
+- `tools/dev_check.ps1`: when `-BaseRef` names a commit that no longer exists (e.g. `github.event.before` after a force-push) the check is skipped, but the leftover `$LASTEXITCODE` made the script exit non-zero and turned the CI Windows gate red; it now ends with an explicit `exit 0` once all gates pass.
+
+### Maintenance
+
+- CI actions are pinned to commit SHAs and bumped to `actions/checkout` v7.0.1 and `actions/setup-python` v7.1.0 (v4/v5 run on the deprecated Node 20); checkout sets `persist-credentials: false`.
+- Added `.github/dependabot.yml` (weekly GitHub Actions updates) and a CodeQL workflow (Python, Actions).
+
 ## 2026-10-19
 
 ### Added

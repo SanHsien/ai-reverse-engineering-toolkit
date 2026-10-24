@@ -4,6 +4,17 @@
 
 格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)，新的在上面。
 
+## 2026-10-24
+
+### 修正
+
+- `tools/dev_check.ps1`：`-BaseRef` 指向已不存在的 commit（例如 force-push 後的 `github.event.before`）時會略過該檢查，但殘留的 `$LASTEXITCODE` 讓腳本以非零結束、CI Windows gate 變紅；改為全部通過後明確 `exit 0`。
+
+### 維護
+
+- CI 的 Actions 釘選到 commit SHA 並升到 `actions/checkout` v7.0.1、`actions/setup-python` v7.1.0（v4／v5 為已淘汰的 Node 20），checkout 關閉 `persist-credentials`。
+- 新增 `.github/dependabot.yml`（每週更新 GitHub Actions）與 CodeQL 工作流程（Python、Actions）。
+
 ## 2026-10-19
 
 ### 新增

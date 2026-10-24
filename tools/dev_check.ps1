@@ -29,3 +29,5 @@ if (-not [string]::IsNullOrWhiteSpace($BaseRef) -and $BaseRef -notmatch '^0+$') 
     }
 }
 Write-Host 'dev_check: all gates passed'
+# A skipped BaseRef (e.g. rev-parse on a SHA gone after a force-push) leaves $LASTEXITCODE non-zero.
+exit 0
