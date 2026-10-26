@@ -132,6 +132,21 @@ class DetectTests(unittest.TestCase):
         self.assertEqual(r.status, "manual")
         self.assertEqual([q.status for q in r.requirements], ["found", "missing"])
 
+    def test_unreadable_dependency_version_is_not_ready(self):
+        with FakeEnv({"rea-agents": "6.5.0", "node": "no digits here"}):
+            r = env_check.check_tool(tool("rea"), env={})
+        self.assertEqual(r.requirements[0].status, "unknown")
+        self.assertFalse(r.ready)
+        self.assertIn("version unreadable", env_check.render_table([r]))
+        with FakeEnv({"ilspycmd": "9.1.0", "dotnet": "x"}):  # dotnet 沒有版本下限，讀不出來仍算 found
+            self.assertTrue(env_check.check_tool(tool("ilspy"), env={}).ready)
+
+    def test_require_manual_tool_is_usage_error(self):
+        with FakeEnv({}):
+            code, out = capture(env_check.main, "--require", "ghidramcp")
+        self.assertEqual(code, 2)
+        self.assertIn("can only be checked by hand", out)
+
     def test_cli_require_and_use_case(self):
         with FakeEnv({"ilspycmd": "9.1.0", "dotnet": "8.0.100"}):
             code, out = capture(env_check.main, "--use-case", "data-recovery", "--require", "ilspy")

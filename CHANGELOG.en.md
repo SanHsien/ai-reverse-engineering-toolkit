@@ -8,6 +8,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), newest 
 
 ### Fixed
 
+- `env_check.py`: a dependency with `min_version` whose version could not be read (timeout, no digits in output) used to count as satisfied and pass the `--require` gate; it is now `unknown` (not ready, shown as `version unreadable`). `--require` on a hand-check-only tool (`ghidramcp`, etc.) always exited 1 with a misleading message; it now exits 2 with an explanation. Rationale in [docs/DECISIONS.md](docs/DECISIONS.md).
+
 - `ledger.py validate`: a list or object in `evidence[].kind` raised `TypeError` instead of a validation error; it now reports the `evidence[j].kind` error. Tracing to Seen is now an iterative fixpoint: a 3000-link inference chain no longer hits `RecursionError`, and a diamond-shaped ladder no longer blows up exponentially.
 - `ledger.py render`: backticks in an evidence `ref` cut the inline code short (now uses a longer delimiter); newlines in title, claim, reasoning and similar fields could open fake headings or bullets (now folded to one line). An unwritable `-o` target (missing directory, etc.) produced a traceback with exit 1, which collides with "ledger has errors"; it now prints a message and exits 2.
 - `tools/check_links.py`: non-ASCII file names (quoted by `git ls-files` by default) crashed the checker because the path no longer existed, now `-z`; tracked files deleted from the working tree no longer crash it; `<paths with spaces>` and targets with balanced parentheses parse correctly; example links inside code blocks and inline code are no longer reported.

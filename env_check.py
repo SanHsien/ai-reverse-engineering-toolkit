@@ -3,7 +3,8 @@
 
 工具清單在 toolkit.json。只執行各工具的 --version 之類的唯讀指令，不安裝、不連網。
 
-結束碼：0 = 正常（或 --require 的工具都在）；1 = --require 指定的工具缺少或依賴版本不足；2 = 用法錯誤。
+結束碼：0 = 正常（或 --require 的工具都在）；1 = --require 指定的工具缺少、依賴版本不足或讀不出版本；
+2 = 用法錯誤（含 --require 指到只能手動確認的工具）。
 """
 from __future__ import annotations
 
@@ -24,7 +25,7 @@ VERSION_RE = re.compile(r"(\d+(?:\.\d+)+|\b\d{2,}\b)")
 @dataclass
 class Requirement:
     label: str
-    status: str  # ok | missing | too-old | found
+    status: str  # ok | missing | too-old | unknown | found
     version: str = ""
     min_version: str = ""
 
@@ -92,7 +93,10 @@ def check_requirement(req: dict) -> Requirement:
     minimum = req.get("min_version", "")
     if minimum and version and not at_least(version, minimum):
         return Requirement(label, "too-old", version, minimum)
-    return Requirement(label, "ok" if minimum and version else "found", version, minimum)
+    if minimum and not version:
+        # 有版本下限卻讀不出版本（逾時、輸出沒數字）：不能當作符合
+        return Requirement(label, "unknown", "", minimum)
+    return Requirement(label, "ok" if minimum else "found", version, minimum)
 
 
 def check_tool(tool: dict, env: dict | None = None) -> Result:
@@ -139,6 +143,8 @@ def render_table(results: list[Result]) -> str:
         for q in r.requirements:
             if q.status == "missing":
                 lines.append(f"        needs {q.label}: not found")
+            elif q.status == "unknown":
+                lines.append(f"        needs {q.label}: found, but version unreadable (need {q.min_version}+)")
             elif q.status == "too-old":
                 lines.append(f"        needs {q.label}: found {q.version}, too old")
         if r.status == "missing" and r.install:
@@ -163,6 +169,12 @@ def main(argv: list[str] | None = None) -> int:
 
     known = {t["id"] for t in catalog["tools"]}
     required = [x.strip() for x in args.require.split(",") if x.strip()]
+    manual = sorted(t["id"] for t in catalog["tools"] if "manual" in t.get("detect", {}))
+    manual_required = [x for x in required if x in manual]
+    if manual_required:
+        print(f"ERROR: {', '.join(manual_required)} can only be checked by hand and cannot be required; "
+              f"required ids must be auto-detectable (not: {', '.join(manual)})", file=sys.stderr)
+        return 2
     unknown = [x for x in required if x not in known]
     if unknown:
         print(f"ERROR: unknown tool id(s): {', '.join(unknown)}; known: {', '.join(sorted(known))}", file=sys.stderr)

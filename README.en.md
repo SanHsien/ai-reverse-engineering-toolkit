@@ -161,6 +161,8 @@ python ledger.py validate templates/ledger.example.json --json
 python ledger.py render templates/ledger.example.json -o report.md
 ```
 
+`--require` accepts only auto-detectable tools; ones that can only be confirmed by hand (`ghidramcp`, `android-re-skill`, `universal-modder`) exit with code 2. A dependency that has a minimum version but whose version cannot be read counts as not ready, never as passing.
+
 ### Ledger Rule Matrix
 
 | Level | Definition | Required Fields |

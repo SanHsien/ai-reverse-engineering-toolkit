@@ -162,6 +162,8 @@ python env_check.py --require ilspy,imhex            # 缺少必要工具時結�
 python env_check.py --json                           # 結構化輸出給 CI 或 Agent
 ```
 
+`--require` 只能指定可自動偵測的工具；Ghidra 外掛、Agent Skill 這類只能手動確認的（`ghidramcp`、`android-re-skill`、`universal-modder`）會回結束碼 2。相依工具有版本下限但讀不出版本時視為未就緒，不會放行。
+
 ### 2. 證據帳本驗證與渲染 (`ledger.py`)
 ```bash
 # 驗證證據帳本合法性

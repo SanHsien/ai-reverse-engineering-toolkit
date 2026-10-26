@@ -8,6 +8,8 @@
 
 ### 修正
 
+- `env_check.py`：相依工具有 `min_version` 但讀不出版本（命令逾時、輸出沒數字）時原本判為符合並放行 `--require` 閘門；改為 `unknown`（未就緒，顯示 `version unreadable`）。`--require` 指到只能手動確認的工具（`ghidramcp` 等）原本永遠回 1 且訊息誤導；改為結束碼 2 並說明。決策理由見 [docs/DECISIONS.md](docs/DECISIONS.md)。
+
 - `ledger.py validate`：`evidence[].kind` 是清單或物件時丟出 `TypeError`（不是驗證錯誤）；改成回報 `evidence[j].kind` 錯誤。追溯到 Seen 改用不動點迭代：3000 層推論鏈不再 `RecursionError`，菱形依賴的梯子不再指數級卡住。
 - `ledger.py render`：證據 `ref` 內含反引號會截斷行內程式碼，改用較長的分隔符；標題、主張、推理等欄位內的換行會開出假標題或項目，改折成單行。`-o` 寫不進去（目錄不存在等）原本是 traceback 且結束碼 1（與「有錯」混淆），改為訊息加結束碼 2。
 - `tools/check_links.py`：非 ASCII 檔名（`git ls-files` 預設加引號跳脫）會讓檢查器找不到檔而當掉，改用 `-z`；已追蹤但工作樹已刪的檔不再當掉；`<含空白的路徑>` 與含成對括號的連結目標能正確解析；程式碼區塊與行內程式碼裡的範例連結不再誤報。
