@@ -98,7 +98,7 @@ def strip_code(text: str) -> str:
     for line in text.splitlines():
         m = FENCE_PATTERN.match(line)
         if fence:
-            if m and m.group(1)[0] == fence[0] and len(m.group(1)) >= len(fence):
+            if m and m.group(1)[0] == fence[0] and len(m.group(1)) >= len(fence) and not line.strip().strip(fence[0]):
                 fence = ""
         elif m:
             fence = m.group(1)

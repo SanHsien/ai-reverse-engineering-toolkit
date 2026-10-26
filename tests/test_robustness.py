@@ -143,6 +143,12 @@ class LinkCheckRobustness(unittest.TestCase):
         code, out = self.run_main()
         self.assertEqual(code, 0, out)
 
+    def test_info_string_line_inside_fence_does_not_close_it(self):
+        self.write("a.md", "```md\n```py\n```\n\n[real](gone.md)\n")
+        code, out = self.run_main()
+        self.assertEqual(code, 1, out)
+        self.assertIn("gone.md", out)
+
     def test_real_broken_link_still_fails(self):
         self.write("a.md", "[x](nope.md)\n\n```\n[y](ignored.md)\n```\n")
         code, out = self.run_main()
