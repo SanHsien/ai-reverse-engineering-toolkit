@@ -10,13 +10,14 @@
 
 子指令：
   validate <ledger.json>             檢查，結束碼 0 = 通過、1 = 有錯、2 = 檔案讀不到或不是 JSON
-  render   <ledger.json> [-o out.md] 檢查通過才輸出 Markdown
+  render   <ledger.json> [-o out.md] 檢查通過才輸出 Markdown；輸出檔寫不進去時結束碼 2
 """
 from __future__ import annotations
 
 import argparse
 import copy
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -84,7 +85,7 @@ def validate(doc: object) -> list[str]:
                 errors.append(f"{where}: seen requires at least one evidence item")
             else:
                 for j, e in enumerate(ev):
-                    if not isinstance(e, dict) or e.get("kind") not in EVIDENCE_KINDS:
+                    if not isinstance(e, dict) or not isinstance(e.get("kind"), str) or e["kind"] not in EVIDENCE_KINDS:
                         errors.append(f"{where}: evidence[{j}].kind must be one of {', '.join(sorted(EVIDENCE_KINDS))}")
                     elif not str(e.get("ref", "")).strip():
                         errors.append(f"{where}: evidence[{j}].ref is required (offset, path:line, command, ...)")
@@ -100,6 +101,7 @@ def validate(doc: object) -> list[str]:
         elif not str(f.get("next_step", "")).strip():
             errors.append(f"{where}: unknown requires next_step (how to find out)")
 
+    grounded = _grounded_ids(by_id)
     for fid, f in by_id.items():
         if f.get("level") != "inferred":
             continue
@@ -108,25 +110,42 @@ def validate(doc: object) -> list[str]:
                 errors.append(f"finding {fid}: based_on references missing id {dep!r}")
             elif by_id[dep].get("level") == "unknown":
                 errors.append(f"finding {fid}: cannot be based on unknown finding {dep!r}")
-        if not _grounded(fid, by_id, set()):
+        if fid not in grounded:
             errors.append(f"finding {fid}: does not trace back to any seen finding (or has a cycle)")
     return errors
 
 
-def _grounded(fid: str, by_id: dict[str, dict], visiting: set[str]) -> bool:
-    f = by_id.get(fid)
-    if f is None or fid in visiting:
-        return False
-    if f.get("level") == "seen":
-        return True
-    if f.get("level") != "inferred":
-        return False
-    visiting = visiting | {fid}
-    return any(_grounded(d, by_id, visiting) for d in f.get("based_on") or [])
+def _grounded_ids(by_id: dict[str, dict]) -> set[str]:
+    """追溯得到 seen 的結論 id。用不動點迭代，不遞迴：長鏈不會爆堆疊、菱形依賴不會指數膨脹。"""
+    grounded = {fid for fid, f in by_id.items() if f.get("level") == "seen"}
+    pending = {fid for fid, f in by_id.items() if f.get("level") == "inferred"}
+    changed = True
+    while changed:
+        changed = False
+        for fid in list(pending):
+            if any(d in grounded for d in by_id[fid].get("based_on") or []):
+                grounded.add(fid)
+                pending.discard(fid)
+                changed = True
+    return grounded
+
+
+def _line(text: object) -> str:
+    """折成單行，內容裡的換行不能開出新標題或項目。"""
+    return " ".join(str(text).split())
 
 
 def _cell(text: object) -> str:
-    return str(text).replace("|", "\\|").replace("\n", " ")
+    return _line(text).replace("|", "\\|")
+
+
+def _code(text: object) -> str:
+    """行內程式碼：分隔用的反引號比內容裡最長的連續反引號多一個。"""
+    body = _cell(text)
+    longest = max((len(m) for m in re.findall(r"`+", body)), default=0)
+    fence = "`" * (longest + 1)
+    pad = " " if body.startswith("`") or body.endswith("`") else ""
+    return f"{fence}{pad}{body}{pad}{fence}"
 
 
 def render(doc: dict) -> str:
@@ -134,14 +153,14 @@ def render(doc: dict) -> str:
     findings = doc["findings"]
     counts = {lv: sum(f["level"] == lv for f in findings) for lv in LEVELS}
     lines = [
-        f"# {doc['title']}",
+        f"# {_line(doc['title'])}",
         "",
-        f"- 分析對象：{scope['target']}",
+        f"- 分析對象：{_line(scope['target'])}",
         f"- 合法依據：{BASES[scope['basis']]}（`{scope['basis']}`）",
-        f"- 授權說明：{scope['authorization']}",
+        f"- 授權說明：{_line(scope['authorization'])}",
     ]
     if scope.get("date"):
-        lines.append(f"- 日期：{scope['date']}")
+        lines.append(f"- 日期：{_line(scope['date'])}")
     lines += ["", f"結論：已驗證 {counts['seen']} 條、推論 {counts['inferred']} 條、未知 {counts['unknown']} 條。", ""]
 
     for level in LEVELS:
@@ -150,19 +169,19 @@ def render(doc: dict) -> str:
             continue
         lines += [f"## {LABELS[level]}", ""]
         for f in items:
-            lines.append(f"### [{f['id']}] {f['claim']}")
+            lines.append(f"### [{_line(f['id'])}] {_line(f['claim'])}")
             lines.append("")
             if level == "seen":
                 lines += ["| 類型 | 位置／指令 | 說明 |", "|---|---|---|"]
                 for e in f["evidence"]:
-                    lines.append(f"| {e['kind']} | `{_cell(e['ref'])}` | {_cell(e.get('note', ''))} |")
+                    lines.append(f"| {e['kind']} | {_code(e['ref'])} | {_cell(e.get('note', ''))} |")
             elif level == "inferred":
-                lines.append(f"- 根據：{', '.join(f['based_on'])}")
-                lines.append(f"- 推理：{f['reasoning']}")
+                lines.append(f"- 根據：{', '.join(_line(d) for d in f['based_on'])}")
+                lines.append(f"- 推理：{_line(f['reasoning'])}")
                 if f.get("confidence"):
-                    lines.append(f"- 信心：{f['confidence']}")
+                    lines.append(f"- 信心：{_line(f['confidence'])}")
             else:
-                lines.append(f"- 下一步：{f['next_step']}")
+                lines.append(f"- 下一步：{_line(f['next_step'])}")
             lines.append("")
     return "\n".join(lines)
 
@@ -214,7 +233,11 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     text = render(doc)
     if args.output:
-        Path(args.output).write_text(text, encoding="utf-8", newline="\n")
+        try:
+            Path(args.output).write_text(text, encoding="utf-8", newline="\n")
+        except OSError as exc:
+            print(f"ERROR: cannot write {args.output}: {exc}", file=sys.stderr)
+            return 2
         print(f"wrote {args.output}")
     else:
         print(text)
