@@ -24,8 +24,12 @@ from urllib.parse import unquote
 
 ROOT = Path(__file__).resolve().parent.parent
 
-LINK_PATTERN = re.compile(r"(?<!!)\[[^\]]*\]\(([^)]+)\)")
-IMAGE_PATTERN = re.compile(r"!\[[^\]]*\]\(([^)]+)\)")
+# Target: <angle form with spaces> or a run that may hold balanced (parentheses); optional title.
+TARGET = r"""(<[^>\n]*>|(?:[^()\s]|\([^()\s]*\))+)(?:\s+(?:"[^"]*"|'[^']*'))?"""
+LINK_PATTERN = re.compile(r"(?<!!)\[[^\]]*\]\(\s*" + TARGET + r"\s*\)")
+IMAGE_PATTERN = re.compile(r"!\[[^\]]*\]\(\s*" + TARGET + r"\s*\)")
+FENCE_PATTERN = re.compile(r"^ {0,3}(`{3,}|~{3,})")
+INLINE_CODE_PATTERN = re.compile(r"(`+)(?!`).+?(?<!`)\1(?!`)")
 HTML_SRC_PATTERN = re.compile(r"""(?is)<img[^>]+src=["']([^"']+)["']""")
 
 SKIP_PREFIXES = ("http://", "https://", "mailto:", "tel:", "#", "$")
@@ -44,7 +48,8 @@ def iter_documents() -> list[Path]:
     ignored scratch file stays outside the gate; new source docs are checked.
     """
     result = subprocess.run(
-        ["git", "-C", str(ROOT), "ls-files", "--cached", "--others", "--exclude-standard", "*.md"],
+        # -z: otherwise git quotes non-ASCII names ("æ.md") and the path no longer exists.
+        ["git", "-C", str(ROOT), "ls-files", "-z", "--cached", "--others", "--exclude-standard", "*.md"],
         capture_output=True,
         text=True,
         encoding="utf-8",
@@ -55,19 +60,25 @@ def iter_documents() -> list[Path]:
             path for path in ROOT.rglob("*.md") if ".git" not in path.parts
         )
     return sorted(
-        ROOT / line
-        for line in result.stdout.splitlines()
-        if line and Path(line).name not in SKIP_NAMES
+        ROOT / name
+        for name in result.stdout.split("\0")
+        # A tracked file deleted from the working tree is still listed by --cached.
+        if name and Path(name).name not in SKIP_NAMES and (ROOT / name).is_file()
     )
 
 
 def missing_target(path: Path, target: str) -> str | None:
     """Return a description of the broken link, or None when it resolves."""
-    target = target.strip().strip("<>")
-    if not target or target.startswith(SKIP_PREFIXES):
+    target = target.strip()
+    if target.startswith("<") and ">" in target:
+        target = target[1:target.index(">")]  # angle form: spaces belong to the path
+        path_part = target
+    else:
+        # A link may carry a title: [text](./file.md "Title").
+        path_part = target.split()[0] if target.split() else ""
+    if not path_part or path_part.startswith(SKIP_PREFIXES):
         return None
-    # A link may carry a title: [text](./file.md "Title").
-    file_part = unquote(target.split()[0].split("#", 1)[0])
+    file_part = unquote(path_part.split("#", 1)[0])
     if not file_part:
         return None
     resolved = (path.parent / file_part).resolve()
@@ -80,9 +91,25 @@ def missing_target(path: Path, target: str) -> str | None:
     return f"{target} -> missing {shown}"
 
 
+def strip_code(text: str) -> str:
+    """Drop fenced blocks and inline code: Markdown shown as an example is not a link."""
+    kept: list[str] = []
+    fence = ""
+    for line in text.splitlines():
+        m = FENCE_PATTERN.match(line)
+        if fence:
+            if m and m.group(1)[0] == fence[0] and len(m.group(1)) >= len(fence):
+                fence = ""
+        elif m:
+            fence = m.group(1)
+        else:
+            kept.append(INLINE_CODE_PATTERN.sub("", line))
+    return "\n".join(kept)
+
+
 def check_document(path: Path) -> list[str]:
     problems: list[str] = []
-    text = path.read_text(encoding="utf-8")
+    text = strip_code(path.read_text(encoding="utf-8"))
     for pattern in (LINK_PATTERN, IMAGE_PATTERN, HTML_SRC_PATTERN):
         for match in pattern.finditer(text):
             problem = missing_target(path, match.group(1))
