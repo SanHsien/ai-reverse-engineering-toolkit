@@ -47,3 +47,7 @@ python tools/check_links.py
 依賴新鮮度：`python tools/check_dependency_freshness.py`（每月由 workflow 跑；紅燈只有 `# freshness-hold:` 或 `.github/dependency-deferrals.json` 兩個出口，見 `docs/DECISIONS.md`）。
 
 Windows：`pwsh -File tools/dev_check.ps1`。驗證通過才提交（用 `&&` 串接）。直接推 `main`，不開分支、不開 PR。
+
+## 路線圖
+
+- `ROADMAP.md` 是本 repo 後續工作的單一真相源。完成或新增工作時，在同一個 commit 更新它：做完的列刪掉、新工作加進去。不要在其他文件另列待辦。
