@@ -4,6 +4,12 @@ English | [中文版](CHANGELOG.md)
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), newest first.
 
+## 2026-10-28
+
+### Added
+
+- Dependency freshness check: `tools/check_dependency_freshness.py` (the fleet's generic version), a monthly `.github/workflows/dependency-freshness.yml`, `.github/dependency-deferrals.json`, and contract tests in `tests/test_dependency_freshness.py`. The toolkit uses the standard library only, so its declared dependencies are the GitHub Actions pinned in the workflows; on the first run all four are at their latest release. Rationale in [docs/DECISIONS.md](docs/DECISIONS.md).
+
 ## 2026-10-26
 
 ### Fixed

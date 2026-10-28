@@ -4,6 +4,12 @@
 
 格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)，新的在上面。
 
+## 2026-10-28
+
+### 新增
+
+- 依賴新鮮度檢查：`tools/check_dependency_freshness.py`（艦隊通用版）＋每月排程的 `.github/workflows/dependency-freshness.yml`＋`.github/dependency-deferrals.json`＋合約測試 `tests/test_dependency_freshness.py`。本工具只用標準庫，宣告的依賴只有 workflow 釘住的 GitHub Actions；四個 Action 首次比對全部是最新版。理由見 [docs/DECISIONS.md](docs/DECISIONS.md)。
+
 ## 2026-10-26
 
 ### 修正
